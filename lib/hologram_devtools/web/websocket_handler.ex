@@ -13,12 +13,12 @@ defmodule HologramDevtools.Web.WebSocketHandler do
 
   @impl WebSock
   def handle_in({text, opcode: :text}, state) do
-    case Jason.decode(text) do
+    case JSON.decode(text) do
       {:ok, message} ->
         handle_message(message, state)
 
       {:error, _} ->
-        error = Jason.encode!(%{type: "error", data: %{message: "Invalid JSON"}})
+        error = JSON.encode!(%{type: "error", data: %{message: "Invalid JSON"}})
         {:push, {:text, error}, state}
     end
   end
@@ -30,7 +30,7 @@ defmodule HologramDevtools.Web.WebSocketHandler do
   @impl WebSock
   def handle_info(:introspection_updated, state) do
     overview = build_overview()
-    msg = Jason.encode!(%{type: "introspection_updated", data: overview})
+    msg = JSON.encode!(%{type: "introspection_updated", data: overview})
     {:push, {:text, msg}, state}
   end
 
@@ -48,7 +48,7 @@ defmodule HologramDevtools.Web.WebSocketHandler do
     components = Store.components()
 
     tree = build_component_tree(pages, components)
-    msg = Jason.encode!(%{type: "component_tree", data: tree})
+    msg = JSON.encode!(%{type: "component_tree", data: tree})
     {:push, {:text, msg}, state}
   end
 
@@ -63,10 +63,10 @@ defmodule HologramDevtools.Web.WebSocketHandler do
       end
 
     if data do
-      msg = Jason.encode!(%{type: "component", data: Map.put(data, :id, id)})
+      msg = JSON.encode!(%{type: "component", data: Map.put(data, :id, id)})
       {:push, {:text, msg}, state}
     else
-      msg = Jason.encode!(%{type: "error", data: %{message: "Component not found: #{id}"}})
+      msg = JSON.encode!(%{type: "error", data: %{message: "Component not found: #{id}"}})
       {:push, {:text, msg}, state}
     end
   end
@@ -87,29 +87,29 @@ defmodule HologramDevtools.Web.WebSocketHandler do
       end)
       |> Enum.sort_by(& &1.route)
 
-    msg = Jason.encode!(%{type: "routes", data: routes})
+    msg = JSON.encode!(%{type: "routes", data: routes})
     {:push, {:text, msg}, state}
   end
 
   defp handle_message(%{"type" => "get_resources"}, state) do
     resources = Store.resources()
-    msg = Jason.encode!(%{type: "resources", data: resources})
+    msg = JSON.encode!(%{type: "resources", data: resources})
     {:push, {:text, msg}, state}
   end
 
   defp handle_message(%{"type" => "get_overview"}, state) do
     overview = build_overview()
-    msg = Jason.encode!(%{type: "overview", data: overview})
+    msg = JSON.encode!(%{type: "overview", data: overview})
     {:push, {:text, msg}, state}
   end
 
   defp handle_message(%{"type" => "subscribe"}, state) do
-    msg = Jason.encode!(%{type: "subscribed", data: %{message: "Subscribed to updates"}})
+    msg = JSON.encode!(%{type: "subscribed", data: %{message: "Subscribed to updates"}})
     {:push, {:text, msg}, %{state | subscribed_events: true}}
   end
 
   defp handle_message(%{"type" => type}, state) do
-    msg = Jason.encode!(%{type: "error", data: %{message: "Unknown message type: #{type}"}})
+    msg = JSON.encode!(%{type: "error", data: %{message: "Unknown message type: #{type}"}})
     {:push, {:text, msg}, state}
   end
 

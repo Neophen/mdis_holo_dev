@@ -8,7 +8,7 @@ defmodule HologramDevtools.MixProject do
     [
       app: :hologram_devtools,
       version: @version,
-      elixir: "~> 1.17",
+      elixir: "~> 1.18",
       start_permanent: false,
       deps: deps(),
       name: "HologramDevtools",

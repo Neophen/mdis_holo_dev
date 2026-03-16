@@ -5,7 +5,7 @@ defmodule HologramDevtools.Web.Endpoint do
   plug :cors
   plug Plug.Logger, log: :debug
   plug :match
-  plug Plug.Parsers, parsers: [:json], json_decoder: Jason
+  plug Plug.Parsers, parsers: [:json], json_decoder: JSON
   plug :dispatch
 
   defp cors(conn, _opts) do
@@ -75,7 +75,7 @@ defmodule HologramDevtools.Web.Endpoint do
   defp send_json(conn, data) do
     conn
     |> put_resp_content_type("application/json")
-    |> send_resp(200, Jason.encode!(data))
+    |> send_resp(200, JSON.encode!(data))
   end
 
   defp render_overview(pages, components, resources) do
