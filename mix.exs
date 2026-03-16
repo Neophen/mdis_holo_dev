@@ -47,8 +47,38 @@ defmodule HologramDevtools.MixProject do
 
   defp docs do
     [
-      main: "readme",
-      extras: ["README.md"]
+      main: "welcome",
+      source_url: @source_url,
+      homepage_url: @source_url,
+      extras: [
+        "guides/welcome.md",
+        "guides/installation.md",
+        "guides/configuration.md",
+        "CHANGELOG.md",
+        LICENSE: [title: "License"]
+      ],
+      groups_for_extras: [
+        "Welcome to HologramDevtools": ~w(guides/welcome.md guides/installation.md),
+        Configuration: ~w(guides/configuration.md),
+        Changelog: ~w(CHANGELOG.md)
+      ],
+      groups_for_modules: [
+        "Introspection": [
+          HologramDevtools.Introspection.Extractor,
+          HologramDevtools.Introspection.PageExtractor,
+          HologramDevtools.Introspection.ComponentExtractor,
+          HologramDevtools.Introspection.ResourceExtractor,
+          HologramDevtools.Introspection.ModuleLocator,
+          HologramDevtools.Introspection.SourceParser,
+          HologramDevtools.Introspection.JsonWriter,
+          HologramDevtools.Introspection.Store,
+          HologramDevtools.Introspection.Watcher
+        ],
+        "Web": [
+          HologramDevtools.Web.Endpoint,
+          HologramDevtools.Web.WebSocketHandler
+        ]
+      ]
     ]
   end
 end
