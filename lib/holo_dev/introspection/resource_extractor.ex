@@ -36,7 +36,7 @@ defmodule HoloDev.Introspection.ResourceExtractor do
   end
 
   defp extract_attributes(mod, source) do
-    Ash.Resource.Info.attributes(mod)
+    apply(Ash.Resource.Info, :attributes, [mod])
     |> Enum.map(fn attr ->
       line =
         if source do
@@ -55,7 +55,7 @@ defmodule HoloDev.Introspection.ResourceExtractor do
   end
 
   defp extract_relationships(mod, source) do
-    Ash.Resource.Info.relationships(mod)
+    apply(Ash.Resource.Info, :relationships, [mod])
     |> Enum.map(fn rel ->
       dest = rel.destination |> to_string() |> String.replace_leading("Elixir.", "")
 

@@ -73,24 +73,47 @@ defmodule HoloDev.Web.WebSocketHandler do
     pages = Store.pages()
     components = Store.components()
 
+    # Try to find component info by module name first, then by CID
     data =
       case Map.get(pages, id) do
         nil -> Map.get(components, id)
         page -> page
       end
 
+    # If not found by module name, try to find by CID from live data
+    {data, _resolved_module} =
+      if data do
+        {data, id}
+      else
+        case get_live_data_for_component(id) do
+          {:ok, %{module: mod_name}} ->
+            static_data = Map.get(components, mod_name, %{})
+            {static_data, mod_name}
+          _ ->
+            {nil, id}
+        end
+      end
+
     if data do
       data = Map.put(data, :id, id)
 
-      # Try to get live state from the state tracker
-      data =
-        case get_live_state_for_component(id) do
-          {:ok, live_state} -> Map.put(data, :state, live_state)
-          :error -> data
-        end
+      # Attach live state and props
+      case get_live_data_for_component(id) do
+        {:ok, %{state: live_state, props: live_props}} ->
+          data = Map.put(data, :state, live_state)
+          data = Map.put(data, :liveProps, live_props)
+          msg = JSON.encode!(%{type: "component", data: data})
+          {:push, {:text, msg}, state}
 
-      msg = JSON.encode!(%{type: "component", data: data})
-      {:push, {:text, msg}, state}
+        {:ok, %{state: live_state}} ->
+          data = Map.put(data, :state, live_state)
+          msg = JSON.encode!(%{type: "component", data: data})
+          {:push, {:text, msg}, state}
+
+        _ ->
+          msg = JSON.encode!(%{type: "component", data: data})
+          {:push, {:text, msg}, state}
+      end
     else
       msg = JSON.encode!(%{type: "error", data: %{message: "Component not found: #{id}"}})
       {:push, {:text, msg}, state}
@@ -172,10 +195,16 @@ defmodule HoloDev.Web.WebSocketHandler do
       filtered_pages
       |> Enum.sort_by(fn {name, _} -> name end)
       |> Enum.map(fn {name, page_info} ->
+        page_mod = String.to_existing_atom("Elixir." <> name)
+        live_data = StateTracker.get_state(page_mod)
         layout_module = Map.get(page_info, :layoutModule)
 
-        # Build layout node with its children
-        layout_children = build_layout_children(layout_module, page_info, components, component_lookup)
+        children =
+          if live_data do
+            build_live_children(layout_module, live_data, components, component_lookup)
+          else
+            build_static_children(layout_module, page_info, component_lookup)
+          end
 
         %{
           id: name,
@@ -183,8 +212,7 @@ defmodule HoloDev.Web.WebSocketHandler do
           type: "page",
           route: Map.get(page_info, :route),
           file: page_info[:file],
-          props: Map.get(page_info, :props, []),
-          children: layout_children
+          children: children
         }
       end)
 
@@ -196,105 +224,162 @@ defmodule HoloDev.Web.WebSocketHandler do
         children: page_nodes
       }
     }
+  rescue
+    _ ->
+      # Fallback to simple flat tree
+      %{root: %{id: "root", name: "Application", type: "root", children: []}}
   end
 
-  defp build_layout_children(nil, page_info, _components, component_lookup) do
-    # No layout, just return page template components
-    build_template_children(page_info, component_lookup)
-  end
+  # Build tree from live component registry data
+  defp build_live_children(layout_module_name, live_data, _components, component_lookup) do
+    instances = Map.get(live_data, :components, %{})
 
-  defp build_layout_children(layout_module_name, page_info, _components_map, component_lookup) do
-    layout_info =
-      case Map.get(component_lookup, short_name(layout_module_name)) do
-        {_full, info} -> info
-        nil -> %{}
+    # Separate by role: layout, runtime, and regular components
+    layout_cid = find_cid_for_module(instances, layout_module_name)
+
+    {runtime_instances, other_instances} =
+      instances
+      |> Enum.reject(fn {cid, _} -> cid == "page" end)
+      |> Enum.split_with(fn {_cid, %{module: mod}} ->
+        String.ends_with?(mod, ".Runtime")
+      end)
+
+    {layout_instances, regular_instances} =
+      Enum.split_with(other_instances, fn {cid, _} -> cid == layout_cid end)
+
+    # Runtime nodes (page-level siblings of layout)
+    runtime_nodes =
+      Enum.map(runtime_instances, fn {cid, inst} ->
+        build_instance_node(cid, inst, component_lookup, "runtime")
+      end)
+
+    # Layout node with regular components as children
+    layout_nodes =
+      case {layout_module_name, layout_instances} do
+        {nil, _} -> []
+        {_, []} ->
+          # No live layout instance, use static info
+          layout_info = lookup_component_info(layout_module_name, component_lookup)
+          [%{
+            id: layout_module_name,
+            name: short_name(layout_module_name),
+            type: "layout",
+            file: layout_info[:file],
+            children: build_regular_nodes(regular_instances, component_lookup)
+          }]
+        {_, [{cid, inst}]} ->
+          [%{
+            id: cid,
+            name: short_name(inst.module),
+            type: "layout",
+            file: lookup_file(inst.module, component_lookup),
+            children: build_regular_nodes(regular_instances, component_lookup)
+          }]
       end
 
-    layout_short = short_name(layout_module_name)
+    runtime_nodes ++ layout_nodes
+  end
+
+  defp build_regular_nodes(instances, component_lookup) do
+    Enum.map(instances, fn {cid, inst} ->
+      build_instance_node(cid, inst, component_lookup, "component")
+    end)
+  end
+
+  defp build_instance_node(cid, inst, component_lookup, type) do
+    %{
+      id: cid,
+      name: short_name(inst.module),
+      type: type,
+      file: lookup_file(inst.module, component_lookup),
+      children: []
+    }
+  end
+
+  defp find_cid_for_module(_instances, nil), do: nil
+  defp find_cid_for_module(instances, module_name) do
+    Enum.find_value(instances, fn {cid, %{module: mod}} ->
+      if mod == module_name, do: cid
+    end)
+  end
+
+  defp lookup_component_info(module_name, component_lookup) do
+    case Map.get(component_lookup, short_name(module_name)) do
+      {_full, info} -> info
+      nil -> %{}
+    end
+  end
+
+  defp lookup_file(module_name, component_lookup) do
+    info = lookup_component_info(module_name, component_lookup)
+    info[:file]
+  end
+
+  # Fallback: static tree from template parsing (before any render happens)
+  defp build_static_children(nil, page_info, component_lookup) do
+    build_static_template_children(page_info, component_lookup)
+  end
+
+  defp build_static_children(layout_module_name, page_info, component_lookup) do
+    layout_info = lookup_component_info(layout_module_name, component_lookup)
     layout_template_components = Map.get(layout_info, :templateComponents, [])
 
-    # Separate Runtime from layout components (Runtime is shown at page level)
-    {runtime_components, regular_layout_components} =
+    {runtime_comps, regular_comps} =
       Enum.split_with(layout_template_components, fn name -> name == "Runtime" end)
 
-    runtime_nodes =
-      Enum.map(runtime_components, fn name ->
-        resolve_component_node(name, component_lookup)
-      end)
-
-    layout_own_children =
-      Enum.map(regular_layout_components, fn comp_name ->
-        resolve_component_node(comp_name, component_lookup)
-      end)
-
-    # Page template components go inside the layout (as slot content)
-    page_children = build_template_children(page_info, component_lookup)
+    runtime_nodes = Enum.map(runtime_comps, &resolve_static_node(&1, component_lookup))
+    layout_own = Enum.map(regular_comps, &resolve_static_node(&1, component_lookup))
+    page_children = build_static_template_children(page_info, component_lookup)
 
     layout_node = %{
       id: layout_module_name,
-      name: layout_short,
+      name: short_name(layout_module_name),
       type: "layout",
       file: layout_info[:file],
-      props: Map.get(layout_info, :props, []),
-      children: layout_own_children ++ page_children
+      children: layout_own ++ page_children
     }
 
     runtime_nodes ++ [layout_node]
   end
 
-  defp build_template_children(info, component_lookup) do
-    template_components = Map.get(info, :templateComponents, [])
-
-    Enum.map(template_components, fn comp_name ->
-      resolve_component_node(comp_name, component_lookup)
-    end)
+  defp build_static_template_children(info, component_lookup) do
+    Map.get(info, :templateComponents, [])
+    |> Enum.map(&resolve_static_node(&1, component_lookup))
   end
 
-  defp resolve_component_node(comp_name, component_lookup) do
+  defp resolve_static_node(comp_name, component_lookup) do
     case Map.get(component_lookup, comp_name) do
       {full_name, info} ->
-        type =
-          cond do
-            comp_name == "Runtime" -> "runtime"
-            true -> "component"
-          end
-
-        %{
-          id: full_name,
-          name: comp_name,
-          type: type,
-          file: info[:file],
-          props: Map.get(info, :props, []),
-          children: []
-        }
-
+        type = if comp_name == "Runtime", do: "runtime", else: "component"
+        %{id: full_name, name: comp_name, type: type, file: info[:file], children: []}
       nil ->
-        # Component not found in our registry (could be a framework built-in)
-        %{
-          id: comp_name,
-          name: comp_name,
-          type: "component",
-          children: []
-        }
+        %{id: comp_name, name: comp_name, type: "component", children: []}
     end
   end
 
-  defp get_live_state_for_component(module_name) do
-    mod = String.to_existing_atom("Elixir." <> module_name)
+  # Get live state/props for a component by its CID or module name
+  defp get_live_data_for_component(id) do
+    all_state = StateTracker.get_state()
 
-    case StateTracker.get_state(mod) do
+    # First check if it's a page module
+    page_mod =
+      try do
+        String.to_existing_atom("Elixir." <> id)
+      rescue
+        _ -> nil
+      end
+
+    case page_mod && StateTracker.get_state(page_mod) do
       %{page_state: page_state} ->
-        {:ok, page_state}
-
-      nil ->
-        # Fallback: check if any page's component registry has this component
-        all_state = StateTracker.get_state()
-
+        {:ok, %{state: page_state}}
+      _ ->
+        # Search by CID across all pages
         result =
           Enum.find_value(all_state, fn {_page_mod, %{components: components}} ->
-            Enum.find_value(components, fn {_cid, %{module: comp_mod, state: comp_state}} ->
-              if comp_mod == module_name, do: comp_state
-            end)
+            case Map.get(components, id) do
+              %{} = inst -> inst
+              nil -> nil
+            end
           end)
 
         if result, do: {:ok, result}, else: :error
