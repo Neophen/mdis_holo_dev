@@ -88,10 +88,8 @@ defmodule HoloDev.Introspection.SourceParser do
   def extract_template_components(source_path) do
     case File.read(source_path) do
       {:ok, content} ->
-        # Find the template block between ~HOLO and closing """
         case Regex.run(~r/~HOLO\s*"""\s*\n(.*?)"""/s, content) do
           [_, template_body] ->
-            # Find PascalCase tags: <ComponentName or <ComponentName>
             Regex.scan(~r/<([A-Z][a-zA-Z0-9]*)[\s\/>]/, template_body)
             |> Enum.map(fn [_, name] -> name end)
             |> Enum.uniq()
@@ -102,6 +100,46 @@ defmodule HoloDev.Introspection.SourceParser do
 
       _ ->
         []
+    end
+  end
+
+  @doc """
+  Extracts prop assignments from component tags in a template.
+  Returns a map of %{"ComponentName" => [%{prop: "name", expression: "expr"}, ...]}.
+  E.g. `<PostPreview post={post} />` → %{"PostPreview" => [%{prop: "post", expression: "post"}]}
+  """
+  def extract_template_prop_bindings(source_path) do
+    case File.read(source_path) do
+      {:ok, content} ->
+        case Regex.run(~r/~HOLO\s*"""\s*\n(.*?)"""/s, content) do
+          [_, template_body] ->
+            # Match full component tags: <ComponentName prop={expr} prop2={expr2} ... />
+            # or <ComponentName prop={expr}>...</ComponentName>
+            Regex.scan(~r/<([A-Z][a-zA-Z0-9]*)((?:\s+[a-z_][a-z0-9_]*=\{[^}]*\})*)\s*\/?>/, template_body)
+            |> Enum.map(fn
+              [_, comp_name, attrs_str] ->
+                props =
+                  Regex.scan(~r/([a-z_][a-z0-9_]*)=\{([^}]*)\}/, attrs_str)
+                  |> Enum.map(fn [_, prop_name, expression] ->
+                    %{prop: prop_name, expression: String.trim(expression)}
+                  end)
+
+                {comp_name, props}
+              _ ->
+                nil
+            end)
+            |> Enum.reject(&is_nil/1)
+            |> Enum.group_by(fn {name, _} -> name end, fn {_, props} -> props end)
+            |> Enum.into(%{}, fn {name, prop_lists} ->
+              {name, prop_lists}
+            end)
+
+          _ ->
+            %{}
+        end
+
+      _ ->
+        %{}
     end
   end
 

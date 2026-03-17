@@ -58,6 +58,9 @@ defmodule HoloDev.Introspection.PageExtractor do
     template_components =
       if source, do: SourceParser.extract_template_components(source), else: []
 
+    template_prop_bindings =
+      if source, do: SourceParser.extract_template_prop_bindings(source), else: %{}
+
     result = %{
       file: relative_path,
       line: mod_line,
@@ -66,7 +69,8 @@ defmodule HoloDev.Introspection.PageExtractor do
       commands: commands,
       stateKeys: state_keys,
       functions: functions,
-      templateComponents: template_components
+      templateComponents: template_components,
+      templatePropBindings: template_prop_bindings
     }
 
     result = if template_line, do: Map.put(result, :templateLine, template_line), else: result
