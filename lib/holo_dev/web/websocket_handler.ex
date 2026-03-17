@@ -43,11 +43,12 @@ defmodule HoloDev.Web.WebSocketHandler do
     :ok
   end
 
-  defp handle_message(%{"type" => "get_component_tree"}, state) do
+  defp handle_message(%{"type" => "get_component_tree"} = message, state) do
     pages = Store.pages()
     components = Store.components()
+    route = Map.get(message, "route")
 
-    tree = build_component_tree(pages, components)
+    tree = build_component_tree(pages, components, route)
     msg = JSON.encode!(%{type: "component_tree", data: tree})
     {:push, {:text, msg}, state}
   end
@@ -126,33 +127,39 @@ defmodule HoloDev.Web.WebSocketHandler do
     }
   end
 
-  defp build_component_tree(pages, components) do
+  defp build_component_tree(pages, components, route) do
+    # Build a lookup from short name to full component info
+    component_lookup =
+      components
+      |> Enum.into(%{}, fn {name, info} ->
+        {short_name(name), {name, info}}
+      end)
+
+    # Filter pages by route if provided
+    filtered_pages =
+      if route do
+        Enum.filter(pages, fn {_name, info} -> Map.get(info, :route) == route end)
+      else
+        Enum.into(pages, [])
+      end
+
     page_nodes =
-      pages
+      filtered_pages
       |> Enum.sort_by(fn {name, _} -> name end)
-      |> Enum.map(fn {name, info} ->
+      |> Enum.map(fn {name, page_info} ->
+        layout_module = Map.get(page_info, :layoutModule)
+
+        # Build layout node with its children
+        layout_children = build_layout_children(layout_module, page_info, components, component_lookup)
+
         %{
           id: name,
           name: short_name(name),
           type: "page",
-          route: Map.get(info, :route),
-          file: info[:file],
-          props: Map.get(info, :props, []),
-          children: []
-        }
-      end)
-
-    component_nodes =
-      components
-      |> Enum.sort_by(fn {name, _} -> name end)
-      |> Enum.map(fn {name, info} ->
-        %{
-          id: name,
-          name: short_name(name),
-          type: "component",
-          file: info[:file],
-          props: Map.get(info, :props, []),
-          children: []
+          route: Map.get(page_info, :route),
+          file: page_info[:file],
+          props: Map.get(page_info, :props, []),
+          children: layout_children
         }
       end)
 
@@ -161,9 +168,90 @@ defmodule HoloDev.Web.WebSocketHandler do
         id: "root",
         name: "Application",
         type: "root",
-        children: page_nodes ++ component_nodes
+        children: page_nodes
       }
     }
+  end
+
+  defp build_layout_children(nil, page_info, _components, component_lookup) do
+    # No layout, just return page template components
+    build_template_children(page_info, component_lookup)
+  end
+
+  defp build_layout_children(layout_module_name, page_info, _components_map, component_lookup) do
+    layout_info =
+      case Map.get(component_lookup, short_name(layout_module_name)) do
+        {_full, info} -> info
+        nil -> %{}
+      end
+
+    layout_short = short_name(layout_module_name)
+    layout_template_components = Map.get(layout_info, :templateComponents, [])
+
+    # Separate Runtime from layout components (Runtime is shown at page level)
+    {runtime_components, regular_layout_components} =
+      Enum.split_with(layout_template_components, fn name -> name == "Runtime" end)
+
+    runtime_nodes =
+      Enum.map(runtime_components, fn name ->
+        resolve_component_node(name, component_lookup)
+      end)
+
+    layout_own_children =
+      Enum.map(regular_layout_components, fn comp_name ->
+        resolve_component_node(comp_name, component_lookup)
+      end)
+
+    # Page template components go inside the layout (as slot content)
+    page_children = build_template_children(page_info, component_lookup)
+
+    layout_node = %{
+      id: layout_module_name,
+      name: layout_short,
+      type: "layout",
+      file: layout_info[:file],
+      props: Map.get(layout_info, :props, []),
+      children: layout_own_children ++ page_children
+    }
+
+    runtime_nodes ++ [layout_node]
+  end
+
+  defp build_template_children(info, component_lookup) do
+    template_components = Map.get(info, :templateComponents, [])
+
+    Enum.map(template_components, fn comp_name ->
+      resolve_component_node(comp_name, component_lookup)
+    end)
+  end
+
+  defp resolve_component_node(comp_name, component_lookup) do
+    case Map.get(component_lookup, comp_name) do
+      {full_name, info} ->
+        type =
+          cond do
+            comp_name == "Runtime" -> "runtime"
+            true -> "component"
+          end
+
+        %{
+          id: full_name,
+          name: comp_name,
+          type: type,
+          file: info[:file],
+          props: Map.get(info, :props, []),
+          children: []
+        }
+
+      nil ->
+        # Component not found in our registry (could be a framework built-in)
+        %{
+          id: comp_name,
+          name: comp_name,
+          type: "component",
+          children: []
+        }
+    end
   end
 
   defp short_name(full_name) do

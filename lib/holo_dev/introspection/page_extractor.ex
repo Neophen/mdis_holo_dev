@@ -37,10 +37,26 @@ defmodule HoloDev.Introspection.PageExtractor do
 
     route =
       try do
-        if function_exported?(mod, :route, 0), do: mod.route()
+        cond do
+          function_exported?(mod, :__route__, 0) -> mod.__route__()
+          function_exported?(mod, :route, 0) -> mod.route()
+          true -> nil
+        end
       rescue
         _ -> nil
       end
+
+    layout_module =
+      try do
+        if function_exported?(mod, :__layout_module__, 0) do
+          mod.__layout_module__() |> to_string() |> String.replace_leading("Elixir.", "")
+        end
+      rescue
+        _ -> nil
+      end
+
+    template_components =
+      if source, do: SourceParser.extract_template_components(source), else: []
 
     result = %{
       file: relative_path,
@@ -49,12 +65,14 @@ defmodule HoloDev.Introspection.PageExtractor do
       actions: actions,
       commands: commands,
       stateKeys: state_keys,
-      functions: functions
+      functions: functions,
+      templateComponents: template_components
     }
 
     result = if template_line, do: Map.put(result, :templateLine, template_line), else: result
     result = if init_line, do: Map.put(result, :initLine, init_line), else: result
     result = if route, do: Map.put(result, :route, route), else: result
+    result = if layout_module, do: Map.put(result, :layoutModule, layout_module), else: result
 
     {name, result}
   end

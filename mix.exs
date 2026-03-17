@@ -31,7 +31,7 @@ defmodule HoloDev.MixProject do
       {:jason, "~> 1.4"},
       {:plug, "~> 1.14"},
       {:bandit, "~> 1.0"},
-      {:file_system, "~> 1.0"},
+      {:phoenix_pubsub, "~> 2.0"},
       {:igniter, "~> 0.7", optional: true},
       {:ex_doc, "~> 0.34", only: :dev, runtime: false}
     ]

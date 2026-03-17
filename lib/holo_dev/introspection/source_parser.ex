@@ -80,6 +80,31 @@ defmodule HoloDev.Introspection.SourceParser do
     end
   end
 
+  @doc """
+  Extracts component tag names from a template in a source file.
+  Looks for PascalCase tags like <Runtime />, <Link>, <PostPreview post={post} />.
+  Returns a list of unique component names found.
+  """
+  def extract_template_components(source_path) do
+    case File.read(source_path) do
+      {:ok, content} ->
+        # Find the template block between ~HOLO and closing """
+        case Regex.run(~r/~HOLO\s*"""\s*\n(.*?)"""/s, content) do
+          [_, template_body] ->
+            # Find PascalCase tags: <ComponentName or <ComponentName>
+            Regex.scan(~r/<([A-Z][a-zA-Z0-9]*)[\s\/>]/, template_body)
+            |> Enum.map(fn [_, name] -> name end)
+            |> Enum.uniq()
+
+          _ ->
+            []
+        end
+
+      _ ->
+        []
+    end
+  end
+
   def extract_params_info(source_path, func_name, action_name) do
     case File.read(source_path) do
       {:ok, content} ->

@@ -33,6 +33,8 @@ defmodule HoloDev.Introspection.ComponentExtractor do
     template_line = if source, do: SourceParser.find_pattern_line(source, ~r/^\s*def\s+template\b/)
     init_line = if source, do: SourceParser.find_pattern_line(source, ~r/^\s*def\s+init\b/)
     functions = extract_functions(mod, source)
+    template_components =
+      if source, do: SourceParser.extract_template_components(source), else: []
 
     result = %{
       file: relative_path,
@@ -40,7 +42,8 @@ defmodule HoloDev.Introspection.ComponentExtractor do
       props: props,
       actions: actions,
       commands: commands,
-      functions: functions
+      functions: functions,
+      templateComponents: template_components
     }
 
     result = if template_line, do: Map.put(result, :templateLine, template_line), else: result

@@ -3846,3 +3846,55 @@ Eval resulted in:
 09:23:08.926 instance_id=19CFA3F2D42 [info] Unhandled notification: $/setTrace
 
 09:23:08.926 instance_id=19CFA3F2D42 [debug] handled notification client -> server $/setTrace in 1ms
+
+09:40:39.901 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 1ms
+
+09:52:11.997 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 1ms
+
+09:52:17.118 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 396µs
+
+09:52:19.542 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 576µs
+
+09:53:41.583 instance_id=19CFA3F2D42 [debug] handled request client -> server textDocument/codeLens in 742µs
+
+09:53:59.459 instance_id=19CFA3F2D42 [debug] handled request client -> server textDocument/codeLens in 360µs
+
+10:01:55.411 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 1ms
+
+10:02:04.009 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 368µs
+
+10:02:10.226 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 347µs
+
+10:02:15.471 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 466µs
+
+10:02:21.616 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 391µs
+
+10:02:24.224 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 583µs
+
+10:02:30.621 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 410µs
+
+10:02:37.860 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 489µs
+
+10:02:57.500 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 429µs
+
+10:03:49.384 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 376µs
+
+10:03:54.844 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 383µs
+
+10:05:27.051 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 1ms
+
+10:05:32.880 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 356µs
+
+10:05:45.859 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 434µs
+
+10:06:51.603 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 436µs
+
+10:07:40.581 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 396µs
+
+10:10:22.013 instance_id=19CFA3F2D42 [debug] handled notification client -> server workspace/didChangeWatchedFiles in 402µs
+
+10:18:15.182 instance_id=19CFA3F2D42 [debug] sent notification server -> client window/logMessage
+
+10:18:15.182 instance_id=19CFA3F2D42 [info] Unhandled notification: $/setTrace
+
+10:18:15.183 instance_id=19CFA3F2D42 [debug] handled notification client -> server $/setTrace in 10ms
