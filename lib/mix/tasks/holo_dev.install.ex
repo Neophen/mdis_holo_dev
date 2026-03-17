@@ -7,7 +7,7 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
 
     This will:
     - Add `{:holo_dev, "~> 0.1", only: :dev}` to your deps
-    - Add `.hologram/` to your `.gitignore`
+    - Add `.holo_dev/` to your `.gitignore`
     """
     use Igniter.Mix.Task
 
@@ -15,14 +15,13 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
     def info(_argv, _composing_task) do
       %Igniter.Mix.Task.Info{
         group: :holo_dev,
-        adds_deps: [{:holo_dev, "~> 0.1"}]
+        adds_deps: [{:holo_dev, "~> 0.1", only: :dev}]
       }
     end
 
     @impl Igniter.Mix.Task
     def igniter(igniter) do
       igniter
-      |> Igniter.Project.Deps.add_dep({:holo_dev, "~> 0.1", only: :dev})
       |> add_to_gitignore()
     end
 
@@ -32,15 +31,20 @@ if Code.ensure_loaded?(Igniter.Mix.Task) do
       case Igniter.exists?(igniter, gitignore_path) do
         true ->
           Igniter.update_file(igniter, gitignore_path, fn source ->
-            if String.contains?(source, ".hologram/") do
+            content = Rewrite.Source.get(source, :content)
+
+            if String.contains?(content, ".holo_dev/") do
               source
             else
-              String.trim_trailing(source) <> "\n\n# Hologram DevTools\n.hologram/\n"
+              new_content =
+                String.trim_trailing(content) <> "\n\n# HoloDev\n.holo_dev/\n"
+
+              Rewrite.Source.update(source, :content, new_content)
             end
           end)
 
         false ->
-          Igniter.create_new_file(igniter, gitignore_path, "# Hologram DevTools\n.hologram/\n")
+          Igniter.create_new_file(igniter, gitignore_path, "# HoloDev\n.holo_dev/\n")
       end
     end
   end

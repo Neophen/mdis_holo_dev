@@ -2,7 +2,7 @@ defmodule Mix.Tasks.Hologram.Introspect do
   @moduledoc """
   One-shot introspection of Hologram/Ash modules.
 
-  Generates `.hologram/*.json` files for the VS Code extension.
+  Generates `.holo_dev/*.json` files for the VS Code extension.
 
       mix hologram.introspect
 

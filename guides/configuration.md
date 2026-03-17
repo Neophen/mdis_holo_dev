@@ -8,7 +8,7 @@ HoloDev works out of the box with sensible defaults, but you can customize its b
 # config/dev.exs
 config :holo_dev,
   port: 4008,
-  output_dir: ".hologram",
+  output_dir: ".holo_dev",
   disabled?: false
 ```
 
@@ -27,11 +27,11 @@ config :holo_dev, port: 9000
 
 The directory where introspection JSON files are written. These files contain the scanned structure of your pages, components, resources, and modules.
 
-- **Default:** `".hologram"`
+- **Default:** `".holo_dev"`
 - **Type:** string (path)
 
 ```elixir
-config :holo_dev, output_dir: ".hologram"
+config :holo_dev, output_dir: ".holo_dev"
 ```
 
 > #### Tip {: .tip}

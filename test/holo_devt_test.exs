@@ -14,6 +14,6 @@ defmodule HoloDevTest do
   end
 
   test "output_dir/0 defaults to .hologram" do
-    assert HoloDev.output_dir() == ".hologram"
+    assert HoloDev.output_dir() == ".holo_dev"
   end
 end

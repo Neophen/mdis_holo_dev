@@ -19,6 +19,6 @@ defmodule HoloDev do
   end
 
   def output_dir do
-    Application.get_env(:holo_dev, :output_dir, ".hologram")
+    Application.get_env(:holo_dev, :output_dir, ".holo_dev")
   end
 end

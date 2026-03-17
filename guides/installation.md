@@ -26,11 +26,13 @@ After you start your application, HoloDev will be running at `http://localhost:4
 
 ## Igniter installation
 
-HoloDev has [Igniter](https://github.com/ash-project/igniter) support — an alternative to standard mix installation. It will automatically add the dependency and update your `.gitignore`.
+HoloDev has [Igniter](https://github.com/ash-project/igniter) support — an alternative to standard mix installation.
 
 ```bash
 mix igniter.install holo_dev
 ```
+
+This will automatically add `{:holo_dev, "~> 0.1", only: :dev}` to your deps and update your `.gitignore`.
 
 ## Chrome Extension
 
