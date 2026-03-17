@@ -27,3 +27,5 @@ holo_dev-*.tar
 .tmp-*
 .commit-msg
 .release-notes
+.expert
+.expert/expert.log

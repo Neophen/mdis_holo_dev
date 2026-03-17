@@ -10,6 +10,7 @@ defmodule HoloDev.Application do
       children = [
         {Registry, keys: :duplicate, name: HoloDev.WebSocketRegistry},
         HoloDev.Introspection.Store,
+        HoloDev.Introspection.StateTracker,
         HoloDev.Introspection.Watcher,
         {Bandit, plug: HoloDev.Web.Endpoint, port: HoloDev.port(), ip: {127, 0, 0, 1}}
       ]

@@ -2,7 +2,7 @@ defmodule HoloDev.Web.WebSocketHandler do
   @moduledoc false
   @behaviour WebSock
 
-  alias HoloDev.Introspection.Store
+  alias HoloDev.Introspection.{Store, StateTracker}
 
   @impl WebSock
   def init(_args) do
@@ -32,6 +32,22 @@ defmodule HoloDev.Web.WebSocketHandler do
     overview = build_overview()
     msg = JSON.encode!(%{type: "introspection_updated", data: overview})
     {:push, {:text, msg}, state}
+  end
+
+  def handle_info({:state_updated, module_name}, state) do
+    live_state = StateTracker.get_state(String.to_existing_atom("Elixir." <> module_name))
+
+    if live_state do
+      msg = JSON.encode!(%{
+        type: "state_updated",
+        data: %{module: module_name, state: live_state}
+      })
+      {:push, {:text, msg}, state}
+    else
+      {:ok, state}
+    end
+  rescue
+    _ -> {:ok, state}
   end
 
   def handle_info(_msg, state) do
@@ -64,7 +80,16 @@ defmodule HoloDev.Web.WebSocketHandler do
       end
 
     if data do
-      msg = JSON.encode!(%{type: "component", data: Map.put(data, :id, id)})
+      data = Map.put(data, :id, id)
+
+      # Try to get live state from the state tracker
+      data =
+        case get_live_state_for_component(id) do
+          {:ok, live_state} -> Map.put(data, :state, live_state)
+          :error -> data
+        end
+
+      msg = JSON.encode!(%{type: "component", data: data})
       {:push, {:text, msg}, state}
     else
       msg = JSON.encode!(%{type: "error", data: %{message: "Component not found: #{id}"}})
@@ -252,6 +277,30 @@ defmodule HoloDev.Web.WebSocketHandler do
           children: []
         }
     end
+  end
+
+  defp get_live_state_for_component(module_name) do
+    mod = String.to_existing_atom("Elixir." <> module_name)
+
+    case StateTracker.get_state(mod) do
+      %{page_state: page_state} ->
+        {:ok, page_state}
+
+      nil ->
+        # Fallback: check if any page's component registry has this component
+        all_state = StateTracker.get_state()
+
+        result =
+          Enum.find_value(all_state, fn {_page_mod, %{components: components}} ->
+            Enum.find_value(components, fn {_cid, %{module: comp_mod, state: comp_state}} ->
+              if comp_mod == module_name, do: comp_state
+            end)
+          end)
+
+        if result, do: {:ok, result}, else: :error
+    end
+  rescue
+    _ -> :error
   end
 
   defp short_name(full_name) do
