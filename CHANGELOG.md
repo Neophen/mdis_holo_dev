@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.14
+
+### Improvements
+- Update **component and page detection** to use new Hologram module API
+- Improve module discovery by preloading all modules during introspection
+- Configure file watcher to respect `elixirc_paths` from Mix project config
+
 ## 0.4.13
 
 ### Improvements
