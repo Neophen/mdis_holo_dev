@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.11
+
+### Improvements
+- Renamed project to **HoloDev** (formerly HologramDevtools)
+- Added project logo
+- Removed release script
+
 ## 0.1.4
 
 ### Improvements
