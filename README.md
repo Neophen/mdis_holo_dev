@@ -1,7 +1,8 @@
-# Holo Dev - Unofficial devtools for Hologram
+<p align="center">
+  <img src="assets/logo.png" alt="Holo Dev" width="128" />
+</p>
 
-<!-- TODO: Add screenshot/banner image -->
-<!-- ![HoloDev](https://github.com/user-attachments/assets/PLACEHOLDER) -->
+# Holo Dev - Unofficial devtools for Hologram
 
 <div align="center">
 
